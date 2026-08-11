@@ -1,0 +1,30 @@
+# Dependencies
+node_modules/
+venv/
+.venv/
+
+# Build outputs
+.next/
+out/
+build/
+dist/
+coverage/
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+
+# Environment and local secrets
+.env
+.env.*
+!.env.example
+!.env.local.example
+
+# Logs and local metadata
+*.log
+.DS_Store
+Thumbs.db
+.vercel/
+*.tsbuildinfo
+next-env.d.ts
