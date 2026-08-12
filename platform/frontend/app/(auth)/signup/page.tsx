@@ -41,7 +41,7 @@ export default function SignupPage() {
             </div>
             <div>
               <label style={{ fontSize: 13, color: "var(--text-secondary)", marginBottom: 6, display: "block" }}>Password</label>
-              <input id="signup-password" type="password" className="input-field" placeholder="••••••••" value={password} onChange={e => setPassword(e.target.value)} required />
+              <input id="signup-password" type="password" className="input-field" placeholder="ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½" value={password} onChange={e => setPassword(e.target.value)} required />
             </div>
             <div>
               <label style={{ fontSize: 13, color: "var(--text-secondary)", marginBottom: 6, display: "block" }}>Role</label>

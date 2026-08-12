@@ -79,7 +79,7 @@ export default function AssistantPage() {
       <div style={{ marginBottom: 20 }}>
         <h1 style={{ fontSize: 26, fontWeight: 800 }}>Retail AI Assistant</h1>
         <p style={{ color: "var(--text-secondary)", marginTop: 4, fontSize: 14 }}>
-          RAG-powered product recommendations + live business data queries · Grounded, not hallucinated
+          RAG-powered product recommendations + live business data queries ï¿½ Grounded, not hallucinated
         </p>
       </div>
 
@@ -109,7 +109,7 @@ export default function AssistantPage() {
                     <div style={{ fontSize: 16, fontWeight: 800, color: "var(--accent-green)", marginBottom: 8 }}>
                       ?{Number(p.price).toLocaleString("en-IN")}
                     </div>
-                    <div style={{ fontSize: 11, color: "var(--text-secondary)", lineHeight: 1.4, marginBottom: 10 }}>{p.description?.slice(0, 80)}…</div>
+                    <div style={{ fontSize: 11, color: "var(--text-secondary)", lineHeight: 1.4, marginBottom: 10 }}>{p.description?.slice(0, 80)}ï¿½</div>
                     <button className="btn-primary" style={{ width: "100%", fontSize: 12, padding: "6px 0" }}>Add to Cart</button>
                   </div>
                 ))}
@@ -149,7 +149,7 @@ export default function AssistantPage() {
         {loading && (
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
             <div className="chat-bubble-assistant" style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <div className="spinner" style={{ width: 14, height: 14 }} /> Thinking…
+              <div className="spinner" style={{ width: 14, height: 14 }} /> Thinkingï¿½
             </div>
           </div>
         )}
@@ -170,7 +170,7 @@ export default function AssistantPage() {
       <div style={{ display: "flex", gap: 12, padding: "16px 0 0", borderTop: "1px solid var(--border-subtle)" }}>
         <input
           className="input-field"
-          placeholder="Ask about products, sales trends, or anything about EIP…"
+          placeholder="Ask about products, sales trends, or anything about EIPï¿½"
           value={input}
           onChange={e => setInput(e.target.value)}
           onKeyDown={e => e.key === "Enter" && sendMessage()}

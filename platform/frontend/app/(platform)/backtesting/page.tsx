@@ -99,7 +99,7 @@ export default function BacktestingPage() {
           {/* Step 1: Data selection */}
           {step === "data" && (
             <div className="glass-card fade-in" style={{ padding: 28 }}>
-              <h2 style={{ fontSize: 16, fontWeight: 700, marginBottom: 20 }}>1 · Select Market Data</h2>
+              <h2 style={{ fontSize: 16, fontWeight: 700, marginBottom: 20 }}>1 ï¿½ Select Market Data</h2>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
                 <div>
                   <label style={{ fontSize: 13, color: "var(--text-secondary)", marginBottom: 8, display: "block" }}>Ticker / Instrument</label>
@@ -125,7 +125,7 @@ export default function BacktestingPage() {
                 <div style={{ gridColumn: "1/-1" }}>
                   <label style={{ fontSize: 13, color: "var(--text-secondary)", marginBottom: 8, display: "block" }}>
                     Train / Test Split Date
-                    <span style={{ marginLeft: 8, color: "var(--text-muted)", fontWeight: 400 }}>— data before this date = train; after = test (out-of-sample)</span>
+                    <span style={{ marginLeft: 8, color: "var(--text-muted)", fontWeight: 400 }}>ï¿½ data before this date = train; after = test (out-of-sample)</span>
                   </label>
                   <input type="date" className="input-field" value={dateRange.split} onChange={e => setDateRange(d => ({ ...d, split: e.target.value }))} />
                 </div>
@@ -137,7 +137,7 @@ export default function BacktestingPage() {
           {/* Step 2: Strategy */}
           {step === "strategy" && (
             <div className="glass-card fade-in" style={{ padding: 28 }}>
-              <h2 style={{ fontSize: 16, fontWeight: 700, marginBottom: 20 }}>2 · Define Strategy</h2>
+              <h2 style={{ fontSize: 16, fontWeight: 700, marginBottom: 20 }}>2 ï¿½ Define Strategy</h2>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 24 }}>
                 {strategies.map(s => (
                   <div key={s.id} onClick={() => { setSelectedStrategy(s); initParams(s); }}
@@ -184,9 +184,9 @@ export default function BacktestingPage() {
           {step === "run" && (
             <div className="glass-card fade-in" style={{ padding: 48, textAlign: "center" }}>
               <div className="spinner" style={{ margin: "0 auto 20px", width: 40, height: 40, borderWidth: 3 }} />
-              <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 8 }}>Running Backtest…</h2>
+              <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 8 }}>Running Backtestï¿½</h2>
               <p style={{ color: "var(--text-secondary)", fontSize: 14 }}>
-                {selectedStrategy?.name} on {selectedTicker} · Bias guard active ?
+                {selectedStrategy?.name} on {selectedTicker} ï¿½ Bias guard active ?
               </p>
               {error && <div style={{ marginTop: 20, color: "var(--accent-red)", background: "rgba(239,68,68,0.1)", padding: 14, borderRadius: 8 }}>{error}</div>}
             </div>
@@ -215,10 +215,10 @@ export default function BacktestingPage() {
                 <span style={{ fontSize: 24 }}>{result.bias_check_passed ? "?" : "?"}</span>
                 <div>
                   <div style={{ fontWeight: 700, fontSize: 15 }}>
-                    Bias Check: {result.bias_check_passed ? "PASSED — No Look-Ahead Bias" : "FAILED — Bias Detected"}
+                    Bias Check: {result.bias_check_passed ? "PASSED ï¿½ No Look-Ahead Bias" : "FAILED ï¿½ Bias Detected"}
                   </div>
                   <div style={{ fontSize: 12, color: "var(--text-secondary)", marginTop: 2 }}>
-                    The engine used df[df.index = current_date] slicing at every tick — strategy never accessed future data.
+                    The engine used df[df.index = current_date] slicing at every tick ï¿½ strategy never accessed future data.
                   </div>
                 </div>
                 <span className={`badge ${result.bias_check_passed ? "badge-green" : "badge-red"}`} style={{ marginLeft: "auto" }}>
