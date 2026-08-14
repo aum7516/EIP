@@ -313,7 +313,12 @@ export default function BacktestingPage() {
                 color: "var(--text-primary)", fontSize: 14, marginBottom: 20
               }}
             >
-              {tickers.map(t => <option key={t} value={t}>{t}</option>)}
+              {tickers.map(t => (
+                <option key={t} value={t} style={{ background: "#0f172a", color: "#f8fafc" }}>
+                  {t}
+                </option>
+              ))}
+
             </select>
 
             <label style={{ fontSize: 13, color: "var(--text-secondary)", display: "block", marginBottom: 6 }}>
