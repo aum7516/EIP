@@ -286,41 +286,55 @@ async def upload_ohlcv_csv(
 @router.post("/run")
 def start_backtest(req: BacktestRequest, db: Session = Depends(get_db),
                    current_user: User = Depends(get_current_user)):
-    strategy_def = get_strategy(req.strategy_id)
-    if not strategy_def:
-        raise HTTPException(status_code=400, detail="Unknown strategy_id")
+    try:
+        strategy_def = get_strategy(req.strategy_id)
+        if not strategy_def:
+            raise HTTPException(status_code=400, detail="Unknown strategy_id")
 
-    default_params = {k: v["default"] for k, v in strategy_def.get("parameters", {}).items()}
-    merged_params = {**default_params, **(req.parameters or {})}
+        default_params = {k: v["default"] for k, v in strategy_def.get("parameters", {}).items()}
+        merged_params = {**default_params, **(req.parameters or {})}
 
-    strat = Strategy(name=strategy_def["name"], type="preset",
-                     parameters=merged_params, created_by=current_user.id)
-    db.add(strat)
-    db.commit()
-    db.refresh(strat)
+        strat_id = uuid.uuid4()
+        strat = Strategy(
+            id=strat_id,
+            name=strategy_def["name"],
+            type="preset",
+            parameters=merged_params,
+            created_by=current_user.id
+        )
+        db.add(strat)
+        db.commit()
 
-    run = BacktestRun(
-        strategy_id=strat.id,
-        ticker=req.ticker,
-        start_date=_parse_date(req.start_date),
-        end_date=_parse_date(req.end_date),
-        split_date=_parse_date(req.split_date),
-        status="running"
-    )
-    db.add(run)
-    db.commit()
-    db.refresh(run)
+        run_uuid = uuid.uuid4()
+        run = BacktestRun(
+            id=run_uuid,
+            strategy_id=strat_id,
+            ticker=req.ticker,
+            start_date=_parse_date(req.start_date),
+            end_date=_parse_date(req.end_date),
+            split_date=_parse_date(req.split_date),
+            status="running"
+        )
+        db.add(run)
+        db.commit()
 
-    run_id = str(run.id)
-    _run_store[run_id] = {"status": "running"}
+        run_id = str(run_uuid)
+        _run_store[run_id] = {"status": "running"}
 
-    t = threading.Thread(target=_run_async, args=(
-        run_id, req.ticker, req.strategy_id, merged_params,
-        req.start_date, req.end_date, req.split_date
-    ), daemon=True)
-    t.start()
+        t = threading.Thread(target=_run_async, args=(
+            run_id, req.ticker, req.strategy_id, merged_params,
+            req.start_date, req.end_date, req.split_date
+        ), daemon=True)
+        t.start()
 
-    return {"run_id": run_id, "status": "running"}
+        return {"run_id": run_id, "status": "running"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        print(f"Error starting backtest: {e}")
+        raise HTTPException(status_code=500, detail=f"Backtest execution error: {str(e)}")
+
 
 
 @router.get("/results/{run_id}")
