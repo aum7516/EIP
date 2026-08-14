@@ -83,13 +83,20 @@ def _process_ohlcv_dataframe(df: pd.DataFrame) -> pd.DataFrame:
     df = df[~df.index.duplicated(keep="last")]
     df.sort_index(inplace=True)
 
-    # Ensure required columns
+    # Ensure required columns & numeric types
     if "close" not in df.columns and "adj_close" in df.columns:
         df["close"] = df["adj_close"]
     elif "close" not in df.columns:
         raise HTTPException(status_code=400, detail="Missing mandatory 'Close' price column.")
 
+    for col in ["open", "high", "low", "close", "adj_close", "volume"]:
+        if col in df.columns:
+            df[col] = pd.to_numeric(df[col], errors="coerce")
+
+    df.dropna(subset=["close"], inplace=True)
+
     return df
+
 
 
 def _load_ohlcv(ticker: str, start_date: Optional[str] = None, end_date: Optional[str] = None) -> pd.DataFrame:
