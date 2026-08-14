@@ -13,7 +13,12 @@ from shared.query_engine import ask_business_data
 
 router = APIRouter()
 
-DATA_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "data", "seed"))
+def _resolve_data_dir() -> str:
+    dir1 = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "data", "seed"))
+    if os.path.exists(dir1): return dir1
+    return os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "data", "seed"))
+
+DATA_DIR = _resolve_data_dir()
 TRANSACTIONS_PARQUET = os.path.join(DATA_DIR, "transactions.parquet")
 PRODUCTS_PARQUET = os.path.join(DATA_DIR, "products.parquet")
 

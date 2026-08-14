@@ -20,8 +20,13 @@ router = APIRouter()
 # In-memory run store for async execution status
 _run_store: dict = {}
 
+def _resolve_data_dir() -> str:
+    dir1 = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "data", "seed"))
+    if os.path.exists(dir1): return dir1
+    return os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "data", "seed"))
+
 PRELOADED_TICKERS = ["AAPL", "TSLA", "INFY.NS"]
-DATA_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "data", "seed"))
+DATA_DIR = _resolve_data_dir()
 
 
 # --- Schemas -----------------------------------------------------------------

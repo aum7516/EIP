@@ -25,7 +25,12 @@ ALLOWED_COLUMNS = {
 
 ALLOWED_METRICS = {"sum_revenue", "count_orders", "avg_order", "sum_quantity", "count_products"}
 
-PARQUET_DIR = os.path.join(os.path.dirname(__file__), "..", "..", "data", "seed")
+def _resolve_data_dir() -> str:
+    dir1 = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "data", "seed"))
+    if os.path.exists(dir1): return dir1
+    return os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "data", "seed"))
+
+PARQUET_DIR = _resolve_data_dir()
 
 
 def _validate_query_params(table: str, metric: str, filters: dict, group_by: Optional[str]) -> None:
