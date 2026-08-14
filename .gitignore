@@ -28,3 +28,10 @@ Thumbs.db
 .vercel/
 *.tsbuildinfo
 next-env.d.ts
+
+# Local data / caches
+*.db
+*.sqlite
+*.parquet
+chroma_db/
+

@@ -34,61 +34,35 @@ import AnomalyPanel from "@/components/datamart/AnomalyPanel";
 import DataTable from "@/components/datamart/DataTable";
 import BusinessReportModal from "@/components/datamart/BusinessReportModal";
 import { UploadCloud, Zap, BarChart3, Info, Sparkles, Cpu, FileText } from "lucide-react";
+import { useData } from "@/context/DataContext";
 
 export default function DataMartPage() {
-  // Centralized Dataset State - Starts empty until user uploads or loads sample
-  const [rawRecords, setRawRecords] = useState<TransactionRecord[]>([]);
-  const [rawHeaders, setRawHeaders] = useState<string[]>([]);
-  const [datasetName, setDatasetName] = useState<string>("");
-  const [isCustomUploaded, setIsCustomUploaded] = useState<boolean>(false);
+  const {
+    rawRecords,
+    rawHeaders,
+    datasetName,
+    isCustomUploaded,
+    filterState,
+    setFilterState,
+    uploadFile,
+    loadSampleData,
+    clearDataset,
+    clearFilters,
+  } = useData();
+
   const [isReportOpen, setIsReportOpen] = useState<boolean>(false);
   const [selectedDrillCategory, setSelectedDrillCategory] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState<boolean>(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Global Filter State
-  const [filterState, setFilterState] = useState<FilterState>({
-    dateFrom: "",
-    dateTo: "",
-    category: [],
-    region: [],
-    customerType: "All",
-    productSearch: "",
-    paymentMethod: []
-  });
-
   // Handle CSV File Upload
-  const processFile = (file: File) => {
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const text = e.target?.result as string;
-      if (text) {
-        const { records, rawHeaders: headers } = parseCSV(text);
-        if (records.length > 0) {
-          setRawRecords(records);
-          setRawHeaders(headers);
-          setDatasetName(file.name);
-          setIsCustomUploaded(true);
-
-          const dates = records.map(r => r.date).filter((d): d is string => Boolean(d)).sort();
-          if (dates.length > 0) {
-            setFilterState(prev => ({
-              ...prev,
-              dateFrom: dates[0],
-              dateTo: dates[dates.length - 1]
-            }));
-          } else {
-            setFilterState(prev => ({
-              ...prev,
-              dateFrom: "",
-              dateTo: ""
-            }));
-          }
-        }
-      }
-    };
-    reader.readAsText(file);
+  const processFile = async (file: File) => {
+    try {
+      await uploadFile(file);
+    } catch (err) {
+      console.error("CSV Upload failed:", err);
+    }
   };
 
   const handleFileUpload = (file: File) => {
@@ -116,54 +90,20 @@ export default function DataMartPage() {
     if (file) processFile(file);
   };
 
-  const handleLoadSampleData = () => {
-    const demoData = generateDemoDataset(6500);
-    const headers = [
-      "transaction_id", "date", "product", "category", "region",
-      "customer_type", "quantity", "unit_price", "discount",
-      "revenue", "cost", "profit", "payment_method", "salesperson"
-    ];
-    setRawRecords(demoData);
-    setRawHeaders(headers);
-    setDatasetName("Sample Retail Transactions (Feb 2026 - Jul 2026)");
-    setIsCustomUploaded(false);
-    setFilterState({
-      dateFrom: "2026-02-01",
-      dateTo: "2026-07-31",
-      category: [],
-      region: [],
-      customerType: "All",
-      productSearch: "",
-      paymentMethod: []
-    });
+  const handleLoadSampleData = async () => {
+    try {
+      await loadSampleData();
+    } catch (err) {
+      console.error("Sample Data load failed:", err);
+    }
   };
 
   const handleClearDataset = () => {
-    setRawRecords([]);
-    setRawHeaders([]);
-    setDatasetName("");
-    setIsCustomUploaded(false);
-    setFilterState({
-      dateFrom: "",
-      dateTo: "",
-      category: [],
-      region: [],
-      customerType: "All",
-      productSearch: "",
-      paymentMethod: []
-    });
+    clearDataset();
   };
 
   const handleClearFilters = () => {
-    setFilterState({
-      dateFrom: "",
-      dateTo: "",
-      category: [],
-      region: [],
-      customerType: "All",
-      productSearch: "",
-      paymentMethod: []
-    });
+    clearFilters();
   };
 
   // Memoized Data Profiling & Semantic Model

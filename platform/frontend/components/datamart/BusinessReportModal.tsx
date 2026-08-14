@@ -51,6 +51,7 @@ export default function BusinessReportModal({
 
   return (
     <div
+      onClick={onClose}
       style={{
         position: "fixed",
         top: 0,
@@ -59,7 +60,7 @@ export default function BusinessReportModal({
         bottom: 0,
         background: "rgba(0, 0, 0, 0.85)",
         backdropFilter: "blur(12px)",
-        zIndex: 9999,
+        zIndex: 99999,
         display: "flex",
         justifyContent: "center",
         alignItems: "center",
@@ -68,6 +69,7 @@ export default function BusinessReportModal({
     >
       <div
         className="glass-card fade-in"
+        onClick={(e) => e.stopPropagation()}
         style={{
           width: "100%",
           maxWidth: 920,

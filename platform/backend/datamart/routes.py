@@ -32,15 +32,21 @@ class NLQueryRequest(BaseModel):
 
 
 # --- Helpers -----------------------------------------------------------------
+def _save_parquet_safe(df: pd.DataFrame, path: str):
+    try:
+        df.to_parquet(path, index=False)
+    except Exception as e:
+        print(f"Notice: Parquet export warning for {path}: {e}")
+
 def _ensure_parquet():
     """Convert seed CSVs to Parquet if not already done or if CSV is newer."""
     tx_csv = os.path.join(DATA_DIR, "transactions.csv")
     pr_csv = os.path.join(DATA_DIR, "products.csv")
     if os.path.exists(tx_csv):
         # Force refresh parquet if CSV exists
-        pd.read_csv(tx_csv).to_parquet(TRANSACTIONS_PARQUET, index=False)
+        _save_parquet_safe(pd.read_csv(tx_csv), TRANSACTIONS_PARQUET)
     if os.path.exists(pr_csv) and not os.path.exists(PRODUCTS_PARQUET):
-        pd.read_csv(pr_csv).to_parquet(PRODUCTS_PARQUET, index=False)
+        _save_parquet_safe(pd.read_csv(pr_csv), PRODUCTS_PARQUET)
 
 
 def _run_duckdb(sql: str) -> list:
@@ -58,7 +64,7 @@ async def ingest_csv(
     file: UploadFile = File(...),
     current_user: User = Depends(get_current_user)
 ):
-    """Accept CSV upload, auto-profile, and save as Parquet for DuckDB."""
+    """Accept CSV upload, auto-profile, and save as active transactions dataset for DuckDB and AI Assistant."""
     contents = await file.read()
     df = pd.read_csv(io.BytesIO(contents))
 
@@ -72,10 +78,19 @@ async def ingest_csv(
         else:
             profile[col] = "categorical"
 
-    out_path = os.path.join(DATA_DIR, f"upload_{file.filename.replace('.csv','')}.parquet")
-    df.to_parquet(out_path, index=False)
+    os.makedirs(DATA_DIR, exist_ok=True)
+    # Save CSV version for persistence backup
+    tx_csv = os.path.join(DATA_DIR, "transactions.csv")
+    df.to_csv(tx_csv, index=False)
 
-    return {"message": "Ingested successfully", "rows": len(df), "columns": profile, "parquet_path": out_path}
+    # Save as primary transactions.parquet for DuckDB & AI Assistant query engine
+    _save_parquet_safe(df, TRANSACTIONS_PARQUET)
+
+    out_path = os.path.join(DATA_DIR, f"upload_{file.filename.replace('.csv','')}.parquet")
+    _save_parquet_safe(df, out_path)
+
+    return {"message": "Ingested successfully into platform DuckDB engine", "rows": len(df), "columns": profile, "parquet_path": TRANSACTIONS_PARQUET}
+
 
 
 @router.get("/kpis")

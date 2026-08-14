@@ -14,6 +14,8 @@ import {
   ChevronRight
 } from "lucide-react";
 
+import { useData } from "@/context/DataContext";
+
 const NAV = [
   { href: "/dashboard",   icon: LayoutDashboard, label: "Dashboard", badge: "Live" },
   { href: "/backtesting", icon: TrendingUp,      label: "Backtesting", badge: null },
@@ -25,6 +27,7 @@ export default function Sidebar() {
   const path = usePathname();
   const router = useRouter();
   const [user, setUser] = useState<{ email: string; role: string } | null>(null);
+  const { clearDataset } = useData();
 
   useEffect(() => {
     const auth = getAuth();
@@ -32,6 +35,7 @@ export default function Sidebar() {
   }, []);
 
   function handleLogout() {
+    clearDataset();
     clearAuth();
     router.push("/login");
   }

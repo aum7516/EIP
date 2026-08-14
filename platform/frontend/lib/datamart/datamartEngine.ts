@@ -856,3 +856,112 @@ export function askNexusAnalyst(question: string, records: TransactionRecord[], 
 
   return { answerText, chartData, chartType };
 }
+
+export interface ContextualQuestionGroup {
+  domain: string;
+  badgeIcon: string;
+  badgeLabel: string;
+  questions: string[];
+}
+
+export function generateContextualQuestions(records: TransactionRecord[]): ContextualQuestionGroup {
+  if (!records || records.length === 0) {
+    return {
+      domain: "Empty",
+      badgeIcon: "📂",
+      badgeLabel: "No Dataset Loaded",
+      questions: [
+        "Upload a CSV dataset to generate contextual questions"
+      ]
+    };
+  }
+
+  const categories = Array.from(new Set(records.map(r => String(r.category || "")).filter(Boolean)));
+  const products = Array.from(new Set(records.map(r => String(r.product || "")).filter(Boolean)));
+  const regions = Array.from(new Set(records.map(r => String(r.region || "")).filter(Boolean)));
+
+  const allText = (categories.join(" ") + " " + products.join(" ")).toLowerCase();
+
+  // 1. Detect Gadgets & Electronics / Tech domain
+  const isGadgetOrTech = /gadget|electronics|laptop|phone|smartphone|watch|smartwatch|camera|headphone|audio|computer|tablet|accessory|tech|device|hardware/.test(allText);
+
+  if (isGadgetOrTech) {
+    const topGadgetCat = categories.find(c => /gadget|electronics|tech|laptop|phone|camera|audio/i.test(c)) || categories[0] || "Electronics & Gadgets";
+    return {
+      domain: "Gadgets & Tech",
+      badgeIcon: "⚡",
+      badgeLabel: `Domain: ${topGadgetCat} / Tech Gadgets`,
+      questions: [
+        `Which gadget in ${topGadgetCat} generated the highest revenue?`,
+        `What is the average unit price across tech & gadget items?`,
+        `Show revenue breakdown for gadgets by region`,
+        `Which gadget category has the highest profit margin?`,
+        `Compare gadget sales volume across all regions`
+      ]
+    };
+  }
+
+  // 2. Detect Food, Grocery & Beverage domain
+  const isFoodOrGrocery = /food|grocery|beverage|snack|pizza|burger|coffee|drink|meal|bakery|restaurant|fruit|vegetable|meat|dairy|dish/.test(allText);
+
+  if (isFoodOrGrocery) {
+    const topFoodCat = categories.find(c => /food|grocery|beverage|snack|meal|bakery|drink/i.test(c)) || categories[0] || "Food & Grocery";
+    return {
+      domain: "Food & Grocery",
+      badgeIcon: "🍕",
+      badgeLabel: `Domain: ${topFoodCat} / Food & Beverages`,
+      questions: [
+        `Which food item in ${topFoodCat} had the highest order volume?`,
+        `What is the total profitability across food & beverage categories?`,
+        `Which region orders the most food items?`,
+        `What is the average order value for grocery & food sales?`,
+        `Show top 5 best-selling food items by revenue`
+      ]
+    };
+  }
+
+  // 3. Detect Fashion & Apparel domain
+  const isFashion = /apparel|fashion|clothing|shirt|shoes|footwear|jacket|dress|wear|garment|pants/.test(allText);
+
+  if (isFashion) {
+    const topFashionCat = categories.find(c => /apparel|fashion|clothing|shirt|shoes/i.test(c)) || categories[0] || "Fashion & Apparel";
+    return {
+      domain: "Fashion & Apparel",
+      badgeIcon: "👗",
+      badgeLabel: `Domain: ${topFashionCat} / Fashion`,
+      questions: [
+        `Which apparel item in ${topFashionCat} is the top best seller?`,
+        `Compare revenue across fashion & clothing categories`,
+        `Which region leads in apparel sales?`,
+        `What is the average discount given on fashion items?`,
+        `Show top 5 revenue-generating clothing products`
+      ]
+    };
+  }
+
+  // 4. Custom CSV Dataset - Dynamic category and metric question generation
+  const cat1 = categories[0] || "Primary Category";
+  const cat2 = categories[1] || "Secondary Category";
+
+  const customQuestions: string[] = [];
+  if (categories.length > 0) {
+    customQuestions.push(`Which product in category '${cat1}' generated top revenue?`);
+    if (categories.length > 1) {
+      customQuestions.push(`Compare total revenue between '${cat1}' and '${cat2}'`);
+    } else {
+      customQuestions.push(`Show total revenue breakdown for category '${cat1}'`);
+    }
+  }
+  if (regions.length > 0) {
+    customQuestions.push(`Which region performs best by total sales?`);
+  }
+  customQuestions.push(`Show top 5 best-selling products by revenue`);
+  customQuestions.push(`What is the average order value across all transactions?`);
+
+  return {
+    domain: "Custom Dataset",
+    badgeIcon: "📊",
+    badgeLabel: `Custom CSV: ${categories.slice(0, 3).join(", ") || "Tabular Data"}`,
+    questions: customQuestions
+  };
+}

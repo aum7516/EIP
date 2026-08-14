@@ -88,9 +88,11 @@ def chat(req: ChatRequest, db: Session = Depends(get_db),
         response_data = {"answer_text": answer_text, "products": products, "chart_data": []}
 
     elif intent == "business_data_query":
-        # -- CROSS-MODULE PROOF POINT: same function as DataMart /ask ------
-        result = ask_business_data(question=req.message, user_id=str(current_user.id))
-        response_data = result
+        response_data = {
+            "answer_text": "Business data queries and database operations are disabled in the AI Assistant workspace. Please use the DataMart Engine workspace to query and analyze datasets.",
+            "chart_data": [],
+            "products": []
+        }
 
     else:  # general_support
         llm_resp = chat_with_llm(

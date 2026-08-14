@@ -6,8 +6,11 @@ export interface AuthUser {
 }
 
 export function saveAuth(user: AuthUser) {
-  localStorage.setItem("orbit_token", user.access_token);
-  localStorage.setItem("orbit_user", JSON.stringify(user));
+  if (typeof window !== "undefined") {
+    localStorage.setItem("orbit_token", user.access_token);
+    localStorage.setItem("orbit_user", JSON.stringify(user));
+    localStorage.removeItem("orbit_active_datamart_dataset");
+  }
 }
 
 export function getAuth(): AuthUser | null {
@@ -17,8 +20,12 @@ export function getAuth(): AuthUser | null {
 }
 
 export function clearAuth() {
-  localStorage.removeItem("orbit_token");
-  localStorage.removeItem("orbit_user");
+  if (typeof window !== "undefined") {
+    localStorage.removeItem("orbit_token");
+    localStorage.removeItem("orbit_user");
+    localStorage.removeItem("orbit_active_datamart_dataset");
+    sessionStorage.clear();
+  }
 }
 
 export function isAuthenticated(): boolean {
