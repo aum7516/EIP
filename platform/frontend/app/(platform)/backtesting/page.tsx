@@ -9,17 +9,61 @@ import {
 
 type Step = "data" | "strategy" | "run" | "results";
 
+const DEFAULT_STRATEGIES = [
+  {
+    id: "sma_crossover",
+    name: "SMA Crossover",
+    description: "Buy when fast Simple Moving Average crosses above slow SMA; sell when fast crosses below.",
+    type: "preset",
+    parameters: {
+      fast_window: { default: 10, min: 2, max: 50, label: "Fast Window (days)" },
+      slow_window: { default: 30, min: 5, max: 200, label: "Slow Window (days)" }
+    }
+  },
+  {
+    id: "rsi_mean_reversion",
+    name: "RSI Mean-Reversion",
+    description: "Buy when Relative Strength Index drops below oversold threshold; sell when it rises above overbought.",
+    type: "preset",
+    parameters: {
+      rsi_period: { default: 14, min: 5, max: 50, label: "RSI Period (days)" },
+      oversold: { default: 30, min: 10, max: 45, label: "Oversold Threshold" },
+      overbought: { default: 70, min: 55, max: 90, label: "Overbought Threshold" }
+    }
+  },
+  {
+    id: "ema_crossover",
+    name: "EMA Crossover",
+    description: "Buy when fast Exponential Moving Average crosses above slow EMA; sell when fast crosses below.",
+    type: "preset",
+    parameters: {
+      fast_window: { default: 12, min: 2, max: 50, label: "Fast EMA Window (days)" },
+      slow_window: { default: 26, min: 5, max: 200, label: "Slow EMA Window (days)" }
+    }
+  },
+  {
+    id: "bollinger_bands",
+    name: "Bollinger Bands Mean-Reversion",
+    description: "Buy when price drops below lower Bollinger Band; sell when price exceeds upper band.",
+    type: "preset",
+    parameters: {
+      bb_period: { default: 20, min: 5, max: 100, label: "Band Period (days)" },
+      std_dev: { default: 2.0, min: 1.0, max: 4.0, label: "Standard Deviation Multiplier" }
+    }
+  }
+];
+
 export default function BacktestingPage() {
   const [step, setStep] = useState<Step>("data");
-  const [strategies, setStrategies] = useState<any[]>([]);
-  const [tickers, setTickers] = useState<string[]>([]);
+  const [strategies, setStrategies] = useState<any[]>(DEFAULT_STRATEGIES);
+  const [tickers, setTickers] = useState<string[]>(["AAPL", "TSLA", "INFY.NS"]);
   const [selectedTicker, setSelectedTicker] = useState("AAPL");
   const [customTicker, setCustomTicker] = useState("");
   const [uploading, setUploading] = useState(false);
   const [uploadMsg, setUploadMsg] = useState<string | null>(null);
 
-  const [selectedStrategy, setSelectedStrategy] = useState<any>(null);
-  const [params, setParams] = useState<Record<string, number>>({});
+  const [selectedStrategy, setSelectedStrategy] = useState<any>(DEFAULT_STRATEGIES[0]);
+  const [params, setParams] = useState<Record<string, number>>({ fast_window: 10, slow_window: 30 });
   const [dateRange, setDateRange] = useState({ start: "2020-01-01", end: "2024-12-31", split: "2022-12-31" });
   
   const [running, setRunning] = useState(false);
@@ -37,16 +81,23 @@ export default function BacktestingPage() {
 
   function loadInitialData() {
     api.getStrategies().then(s => {
-      setStrategies(s);
-      if (s[0]) {
-        setSelectedStrategy(s[0]);
-        initParams(s[0]);
+      if (Array.isArray(s) && s.length > 0) {
+        setStrategies(s);
+        if (!selectedStrategy || !s.find(item => item.id === selectedStrategy.id)) {
+          setSelectedStrategy(s[0]);
+          initParams(s[0]);
+        }
       }
     }).catch(err => console.error(err));
 
-    api.getTickers().then(t => setTickers(t.preloaded)).catch(err => console.error(err));
+    api.getTickers().then(t => {
+      if (t && Array.isArray(t.preloaded) && t.preloaded.length > 0) {
+        setTickers(t.preloaded);
+      }
+    }).catch(err => console.error(err));
     api.getBacktestHistory().then(setHistory).catch(() => {});
   }
+
 
   function initParams(strat: any) {
     const def: Record<string, number> = {};
