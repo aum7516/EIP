@@ -78,8 +78,9 @@ def _process_ohlcv_dataframe(df: pd.DataFrame) -> pd.DataFrame:
     if not date_col:
         raise HTTPException(status_code=400, detail="Data must contain a 'Date' column.")
 
-    df[date_col] = pd.to_datetime(df[date_col])
+    df[date_col] = pd.to_datetime(df[date_col], utc=True).dt.tz_localize(None)
     df.set_index(date_col, inplace=True)
+    df = df[~df.index.duplicated(keep="last")]
     df.sort_index(inplace=True)
 
     # Ensure required columns
@@ -103,13 +104,16 @@ def _load_ohlcv(ticker: str, start_date: Optional[str] = None, end_date: Optiona
             csv_df = _process_ohlcv_dataframe(raw_csv)
             # Check if requested date range is covered by local CSV
             if start_date and end_date:
-                sub_slice = csv_df.loc[start_date:end_date]
+                s_dt = pd.to_datetime(start_date)
+                e_dt = pd.to_datetime(end_date)
+                sub_slice = csv_df[(csv_df.index >= s_dt) & (csv_df.index <= e_dt)]
                 if not sub_slice.empty:
                     return csv_df
             else:
                 return csv_df
         except Exception as e:
             print(f"Warning loading CSV for {ticker}: {e}")
+
 
     # Fallback to yfinance if CSV missing or doesn't cover requested date range
     try:

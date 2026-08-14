@@ -155,15 +155,22 @@ def run_backtest(
     Returns:
         dict containing metrics, in_sample_metrics, out_of_sample_metrics, equity_curve, trades
     """
-    # -- Validate chronological order (bias risk #1) -------------------------
+    # -- Validate chronological order and index monotonicity -----------------
+    if hasattr(df.index, "tz") and df.index.tz is not None:
+        df.index = df.index.tz_localize(None)
+    df = df[~df.index.duplicated(keep="last")]
     if not df.index.is_monotonic_increasing:
         df = df.sort_index()
 
-    df_filtered = df.loc[start_date:end_date].copy()
+    start_dt = pd.to_datetime(start_date)
+    end_dt = pd.to_datetime(end_date)
+    df_filtered = df[(df.index >= start_dt) & (df.index <= end_dt)].copy()
+
     if len(df_filtered) < 2:
         min_d = str(df.index.min().date()) if not df.empty and hasattr(df.index.min(), "date") else "N/A"
         max_d = str(df.index.max().date()) if not df.empty and hasattr(df.index.max(), "date") else "N/A"
         raise ValueError(f"Date range {start_date} to {end_date} contains insufficient market data ({len(df_filtered)} rows). Available date range for dataset is {min_d} to {max_d}.")
+
 
     # Parse strategy parameters
     fast_window = int(parameters.get("fast_window", 10))
