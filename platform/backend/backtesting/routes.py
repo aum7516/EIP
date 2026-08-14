@@ -66,6 +66,10 @@ def _process_ohlcv_dataframe(df: pd.DataFrame) -> pd.DataFrame:
     if isinstance(df.columns, pd.MultiIndex):
         df.columns = df.columns.get_level_values(0)
 
+    # If row 0 is empty date or ticker header row from yfinance CSV export, drop it
+    if not df.empty and (df.iloc[0, 0] is None or pd.isna(df.iloc[0, 0]) or str(df.iloc[0, 0]).strip() == ""):
+        df = df.iloc[1:].copy()
+
     # If Date is index, reset so we can process it as column
     if "Date" in df.index.names or "date" in df.index.names or df.index.name is not None:
         df = df.reset_index()
@@ -78,10 +82,18 @@ def _process_ohlcv_dataframe(df: pd.DataFrame) -> pd.DataFrame:
     if not date_col:
         raise HTTPException(status_code=400, detail="Data must contain a 'Date' column.")
 
-    df[date_col] = pd.to_datetime(df[date_col], utc=True).dt.tz_localize(None)
+    df[date_col] = pd.to_datetime(df[date_col], errors="coerce", utc=True)
+    df.dropna(subset=[date_col], inplace=True)
+    df[date_col] = df[date_col].dt.tz_localize(None)
+
     df.set_index(date_col, inplace=True)
     df = df[~df.index.duplicated(keep="last")]
     df.sort_index(inplace=True)
+
+    # Coerce price and volume columns to float
+    for col in ["close", "open", "high", "low", "adj_close", "volume"]:
+        if col in df.columns:
+            df[col] = pd.to_numeric(df[col], errors="coerce")
 
     # Ensure required columns & numeric types
     if "close" not in df.columns and "adj_close" in df.columns:
@@ -89,13 +101,10 @@ def _process_ohlcv_dataframe(df: pd.DataFrame) -> pd.DataFrame:
     elif "close" not in df.columns:
         raise HTTPException(status_code=400, detail="Missing mandatory 'Close' price column.")
 
-    for col in ["open", "high", "low", "close", "adj_close", "volume"]:
-        if col in df.columns:
-            df[col] = pd.to_numeric(df[col], errors="coerce")
-
     df.dropna(subset=["close"], inplace=True)
 
     return df
+
 
 
 
