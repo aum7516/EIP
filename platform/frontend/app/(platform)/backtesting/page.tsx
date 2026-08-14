@@ -56,8 +56,20 @@ const DEFAULT_STRATEGIES = [
 export default function BacktestingPage() {
   const [step, setStep] = useState<Step>("data");
   const [strategies, setStrategies] = useState<any[]>(DEFAULT_STRATEGIES);
-  const [tickers, setTickers] = useState<string[]>(["AAPL", "TSLA", "INFY.NS"]);
-  const [selectedTicker, setSelectedTicker] = useState("AAPL");
+  const [tickers, setTickers] = useState<string[]>([
+    "RELIANCE.NS",
+    "TCS.NS",
+    "HDFCBANK.NS",
+    "INFY.NS",
+    "ICICIBANK.NS",
+    "SBIN.NS",
+    "BHARTIARTL.NS",
+    "AAPL",
+    "TSLA"
+  ]);
+  const [selectedTicker, setSelectedTicker] = useState("RELIANCE.NS");
+
+
   const [customTicker, setCustomTicker] = useState("");
   const [uploading, setUploading] = useState(false);
   const [uploadMsg, setUploadMsg] = useState<string | null>(null);

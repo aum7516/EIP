@@ -25,7 +25,18 @@ def _resolve_data_dir() -> str:
     if os.path.exists(dir1): return dir1
     return os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "data", "seed"))
 
-PRELOADED_TICKERS = ["AAPL", "TSLA", "INFY.NS"]
+PRELOADED_TICKERS = [
+    "RELIANCE.NS",
+    "TCS.NS",
+    "HDFCBANK.NS",
+    "INFY.NS",
+    "ICICIBANK.NS",
+    "SBIN.NS",
+    "BHARTIARTL.NS",
+    "AAPL",
+    "TSLA"
+]
+
 DATA_DIR = _resolve_data_dir()
 
 
