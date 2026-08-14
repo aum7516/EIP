@@ -136,5 +136,16 @@ export const api = {
     request<any>("/assistant/chat", { method: "POST", body: JSON.stringify(body) }),
   feedback: (message_id: string, feedback: "up" | "down") =>
     request<any>("/assistant/feedback", { method: "POST", body: JSON.stringify({ message_id, feedback }) }),
+  getProducts: (q?: string, category?: string, limit = 20) => {
+    const params = new URLSearchParams();
+    if (q) params.set("q", q);
+    if (category) params.set("category", category);
+    params.set("limit", String(limit));
+    return request<any>(`/assistant/products?${params}`);
+  },
+  getConversations: () => request<any[]>("/assistant/conversations"),
+  getConversationMessages: (convId: string) => request<any>(`/assistant/conversations/${encodeURIComponent(convId)}/messages`),
+  deleteConversation: (convId: string) => request<any>(`/assistant/conversations/${encodeURIComponent(convId)}`, { method: "DELETE" }),
+  getAssistantStats: () => request<any>("/assistant/stats"),
 };
 

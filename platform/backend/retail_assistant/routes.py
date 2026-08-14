@@ -1,14 +1,13 @@
 import uuid
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 from typing import Optional
 from sqlalchemy.orm import Session
 from shared.db import get_db
 from shared.models import User, AssistantConversation, AssistantMessage
-from shared.query_engine import ask_business_data
 from shared.llm_client import chat_with_llm, MOCK_RESPONSES
 from auth.routes import get_current_user
-from retail_assistant.rag import search_products
+from retail_assistant.rag import search_products, get_all_products, get_categories, MOCK_CATALOG
 from retail_assistant.router import classify_intent
 
 router = APIRouter()
@@ -26,7 +25,34 @@ class FeedbackRequest(BaseModel):
     feedback: str  # "up" or "down"
 
 
-# --- Routes ------------------------------------------------------------------
+# --- Product Catalog ---------------------------------------------------------
+@router.get("/products")
+def browse_products(
+    q: Optional[str] = Query(None, description="Search query"),
+    category: Optional[str] = Query(None, description="Filter by category"),
+    limit: int = Query(20, le=50),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Browse or search the product catalog."""
+    if q:
+        products = search_products(q, top_k=limit, category=category)
+    else:
+        products = get_all_products(category=category, limit=limit)
+    categories = get_categories()
+    return {"products": products, "total": len(products), "categories": categories}
+
+
+@router.get("/categories")
+def list_categories(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """List all product categories."""
+    return {"categories": get_categories()}
+
+
+# --- Chat --------------------------------------------------------------------
 @router.post("/chat")
 def chat(req: ChatRequest, db: Session = Depends(get_db),
          current_user: User = Depends(get_current_user)):
@@ -38,7 +64,7 @@ def chat(req: ChatRequest, db: Session = Depends(get_db),
             conversation = db.query(AssistantConversation).filter(
                 AssistantConversation.id == conv_uuid
             ).first()
-        except:
+        except Exception:
             conversation = None
     else:
         conversation = None
@@ -73,37 +99,50 @@ def chat(req: ChatRequest, db: Session = Depends(get_db),
 
     if intent == "product_query":
         products = search_products(req.message, top_k=5)
-        llm_resp = chat_with_llm(
-            messages=messages,
-            system_prompt=f"""You are Orbit, EIP's retail assistant.
-            The user is looking for products. Use these search results to answer:
-            {products}
-            Be helpful, concise, and recommend specific products with prices."""
-        )
-        answer = llm_resp.get("content", MOCK_RESPONSES["general"])
-        if isinstance(answer, str):
-            answer_text = answer
+        # Build context-aware mock response using actual product names/prices
+        if products:
+            prod_lines = "\n".join(
+                f"- {p['name']} ({p['category']}) — ₹{int(p['price']):,}: {p.get('description','')[:60]}"
+                for p in products[:3]
+            )
+            answer_text = (
+                f"Here are my top recommendations based on your query:\n\n{prod_lines}\n\n"
+                f"I found {len(products)} matching products. The items above match your requirements well — "
+                f"would you like to compare any two products, or do you need more details?"
+            )
         else:
-            answer_text = f"Here are some products matching your query. I found {len(products)} relevant items."
+            answer_text = "I couldn't find exact matches for your query. Could you refine it? For example, try mentioning a category like 'laptop', 'chair', or 'headphones'."
+
         response_data = {"answer_text": answer_text, "products": products, "chart_data": []}
 
     elif intent == "business_data_query":
         response_data = {
-            "answer_text": "Business data queries and database operations are disabled in the AI Assistant workspace. Please use the DataMart Engine workspace to query and analyze datasets.",
+            "answer_text": (
+                "📊 Business data queries are disabled in the AI Assistant workspace. "
+                "Please use the **DataMart Engine** workspace to run analytical queries and explore datasets."
+            ),
             "chart_data": [],
             "products": []
         }
 
     else:  # general_support
+        platform_context = """You are Orbit, the intelligent assistant for EIP (Enterprise Intelligence Platform).
+EIP includes:
+- 📈 Backtesting Platform: Run historical strategy simulations with bias-guard protection
+- 🗄️ DataMart Engine: Ingest CSV datasets, run natural language SQL queries
+- 🤖 Retail AI Assistant: Product search, recommendations (this workspace)
+- 📊 Unified Dashboard: Live KPIs, revenue trends, regional breakdown
+Help users navigate, understand features, and get the most from EIP. Be concise and professional."""
         llm_resp = chat_with_llm(
             messages=messages,
-            system_prompt="""You are Orbit, the intelligent assistant for EIP: Enterprise Intelligence Platform.
-            Help users with general questions about the platform, navigation, and support.
-            Be professional, concise, and friendly.""",
+            system_prompt=platform_context,
             tools_enabled=False
         )
         content = llm_resp.get("content", MOCK_RESPONSES["general"])
-        response_data = {"answer_text": content if isinstance(content, str) else MOCK_RESPONSES["general"], "chart_data": [], "products": []}
+        response_data = {
+            "answer_text": content if isinstance(content, str) else MOCK_RESPONSES["general"],
+            "chart_data": [], "products": []
+        }
 
     # Log assistant message
     assistant_msg = AssistantMessage(
@@ -124,6 +163,7 @@ def chat(req: ChatRequest, db: Session = Depends(get_db),
     }
 
 
+# --- Feedback ----------------------------------------------------------------
 @router.post("/feedback")
 def submit_feedback(req: FeedbackRequest, db: Session = Depends(get_db),
                     current_user: User = Depends(get_current_user)):
@@ -139,9 +179,115 @@ def submit_feedback(req: FeedbackRequest, db: Session = Depends(get_db),
     return {"message_id": req.message_id, "feedback": req.feedback}
 
 
+# --- Conversations -----------------------------------------------------------
 @router.get("/conversations")
 def list_conversations(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     convs = db.query(AssistantConversation).filter(
         AssistantConversation.user_id == current_user.id
-    ).order_by(AssistantConversation.created_at.desc()).limit(10).all()
-    return [{"id": str(c.id), "created_at": str(c.created_at)} for c in convs]
+    ).order_by(AssistantConversation.created_at.desc()).limit(20).all()
+    result = []
+    for c in convs:
+        # Get first user message as title
+        first_msg = db.query(AssistantMessage).filter(
+            AssistantMessage.conversation_id == c.id,
+            AssistantMessage.role == "user"
+        ).order_by(AssistantMessage.created_at.asc()).first()
+        msg_count = db.query(AssistantMessage).filter(
+            AssistantMessage.conversation_id == c.id
+        ).count()
+        result.append({
+            "id": str(c.id),
+            "title": (first_msg.content[:50] + "...") if first_msg and len(first_msg.content) > 50 else (first_msg.content if first_msg else "New Conversation"),
+            "created_at": str(c.created_at),
+            "message_count": msg_count
+        })
+    return result
+
+
+@router.get("/conversations/{conv_id}/messages")
+def get_conversation_messages(
+    conv_id: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Load full message history of a specific conversation."""
+    try:
+        conv_uuid = uuid.UUID(conv_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid conversation ID")
+
+    conversation = db.query(AssistantConversation).filter(
+        AssistantConversation.id == conv_uuid,
+        AssistantConversation.user_id == current_user.id
+    ).first()
+    if not conversation:
+        raise HTTPException(status_code=404, detail="Conversation not found")
+
+    messages = db.query(AssistantMessage).filter(
+        AssistantMessage.conversation_id == conv_uuid
+    ).order_by(AssistantMessage.created_at.asc()).all()
+
+    return {
+        "conversation_id": conv_id,
+        "messages": [
+            {
+                "id": str(m.id),
+                "role": m.role,
+                "content": m.content,
+                "intent_type": m.intent_type,
+                "feedback": m.feedback,
+                "created_at": str(m.created_at)
+            }
+            for m in messages
+        ]
+    }
+
+
+@router.delete("/conversations/{conv_id}")
+def delete_conversation(
+    conv_id: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Delete a conversation and all its messages."""
+    try:
+        conv_uuid = uuid.UUID(conv_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid conversation ID")
+
+    conversation = db.query(AssistantConversation).filter(
+        AssistantConversation.id == conv_uuid,
+        AssistantConversation.user_id == current_user.id
+    ).first()
+    if not conversation:
+        raise HTTPException(status_code=404, detail="Conversation not found")
+
+    db.query(AssistantMessage).filter(AssistantMessage.conversation_id == conv_uuid).delete()
+    db.delete(conversation)
+    db.commit()
+    return {"status": "deleted", "conversation_id": conv_id}
+
+
+# --- Stats -------------------------------------------------------------------
+@router.get("/stats")
+def get_stats(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    """Assistant usage statistics for the current user."""
+    total_convs = db.query(AssistantConversation).filter(
+        AssistantConversation.user_id == current_user.id
+    ).count()
+    total_msgs = db.query(AssistantMessage).join(
+        AssistantConversation, AssistantMessage.conversation_id == AssistantConversation.id
+    ).filter(AssistantConversation.user_id == current_user.id).count()
+    helpful = db.query(AssistantMessage).join(
+        AssistantConversation, AssistantMessage.conversation_id == AssistantConversation.id
+    ).filter(
+        AssistantConversation.user_id == current_user.id,
+        AssistantMessage.feedback == "up"
+    ).count()
+
+    return {
+        "total_conversations": total_convs,
+        "total_messages": total_msgs,
+        "helpful_responses": helpful,
+        "catalog_size": len(MOCK_CATALOG),
+    }
