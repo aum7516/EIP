@@ -23,31 +23,45 @@ export default function BusinessReportModal({
   insights,
   datasetName
 }: BusinessReportModalProps) {
-  if (!isOpen) return null;
+  if (!isOpen || !kpis) return null;
 
-  const fmtCurrency = (v: number | null) => {
-    if (v === null || v === undefined) return "N/A";
+  const fmtCurrency = (v: number | null | undefined) => {
+    if (v === null || v === undefined || isNaN(v)) return "N/A";
     return new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(v);
   };
 
   const handlePrint = () => {
-    window.print();
+    try {
+      window.print();
+    } catch (e) {
+      console.error("Print error:", e);
+    }
   };
 
   const handleExportCSV = () => {
-    if (!records.length) return;
-    const headers = Object.keys(records[0]).filter(k => !k.startsWith("_"));
-    const rows = records.map(r => headers.map(h => `"${r[h] ?? ""}"`).join(","));
-    const csvStr = [headers.join(","), ...rows].join("\n");
+    if (!records || !records.length) return;
+    try {
+      const headers = Object.keys(records[0]).filter(k => !k.startsWith("_"));
+      const rows = records.map(r => headers.map(h => `"${(r as any)[h] ?? ""}"`).join(","));
+      const csvStr = [headers.join(","), ...rows].join("\n");
 
-    const blob = new Blob([csvStr], { type: "text/csv" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `datamart_executive_report_${new Date().toISOString().split("T")[0]}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
+      const blob = new Blob([csvStr], { type: "text/csv" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `datamart_executive_report_${new Date().toISOString().split("T")[0]}.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      console.error("Export CSV error:", e);
+    }
   };
+
+  const safeAnomalies = Array.isArray(anomalies) ? anomalies : [];
+  const safeInsights = Array.isArray(insights) ? insights : [];
+  const recCount = records?.length ?? 0;
+  const marginText = typeof kpis?.profitMargin === "number" && !isNaN(kpis.profitMargin) ? `${kpis.profitMargin.toFixed(1)}%` : "N/A";
+  const txCountText = (kpis?.totalTransactions ?? 0).toLocaleString();
 
   return (
     <div
@@ -93,7 +107,7 @@ export default function BusinessReportModal({
               Executive DataMart Intelligence Report
             </h1>
             <div style={{ fontSize: 13, color: "var(--text-secondary)", marginTop: 4 }}>
-              Generated on {new Date().toLocaleDateString("en-IN")} | Dataset: <strong style={{ color: "var(--text-primary)" }}>{datasetName}</strong> ({records.length.toLocaleString()} txs)
+              Generated on {new Date().toLocaleDateString("en-IN")} | Dataset: <strong style={{ color: "var(--text-primary)" }}>{datasetName}</strong> ({recCount.toLocaleString()} txs)
             </div>
           </div>
 
@@ -119,7 +133,7 @@ export default function BusinessReportModal({
             <span>1. Executive Summary</span>
           </h2>
           <p style={{ fontSize: 14, lineHeight: 1.6, color: "var(--text-primary)", background: "rgba(18, 22, 34, 0.8)", padding: 18, borderRadius: 12, border: "1px solid var(--border)" }}>
-            During the evaluated performance cycle, the dataset processed total net revenue of <strong className="font-mono" style={{ color: "#60a5fa" }}>{fmtCurrency(kpis.totalRevenue)}</strong> across <strong className="font-mono">{kpis.totalTransactions.toLocaleString()} transactions</strong>. Gross cumulative profit stands at <strong className="font-mono" style={{ color: "#34d399" }}>{fmtCurrency(kpis.totalProfit)}</strong> with an overall net profit margin of <strong className="font-mono" style={{ color: "#fbbf24" }}>{kpis.profitMargin !== null ? `${kpis.profitMargin.toFixed(1)}%` : "N/A"}</strong>.
+            During the evaluated performance cycle, the dataset processed total net revenue of <strong className="font-mono" style={{ color: "#60a5fa" }}>{fmtCurrency(kpis?.totalRevenue)}</strong> across <strong className="font-mono">{txCountText} transactions</strong>. Gross cumulative profit stands at <strong className="font-mono" style={{ color: "#34d399" }}>{fmtCurrency(kpis?.totalProfit)}</strong> with an overall net profit margin of <strong className="font-mono" style={{ color: "#fbbf24" }}>{marginText}</strong>.
           </p>
         </div>
 
@@ -131,15 +145,15 @@ export default function BusinessReportModal({
           <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 14 }}>
             <div style={{ background: "rgba(18, 22, 34, 0.8)", padding: 16, borderRadius: 12, border: "1px solid var(--border)" }}>
               <div style={{ fontSize: 11, color: "var(--text-secondary)", textTransform: "uppercase", letterSpacing: "0.5px" }}>Total Net Revenue</div>
-              <div className="font-heading font-mono" style={{ fontSize: 22, fontWeight: 900, color: "#60a5fa", marginTop: 4 }}>{fmtCurrency(kpis.totalRevenue)}</div>
+              <div className="font-heading font-mono" style={{ fontSize: 22, fontWeight: 900, color: "#60a5fa", marginTop: 4 }}>{fmtCurrency(kpis?.totalRevenue)}</div>
             </div>
             <div style={{ background: "rgba(18, 22, 34, 0.8)", padding: 16, borderRadius: 12, border: "1px solid var(--border)" }}>
               <div style={{ fontSize: 11, color: "var(--text-secondary)", textTransform: "uppercase", letterSpacing: "0.5px" }}>Total Net Profit</div>
-              <div className="font-heading font-mono" style={{ fontSize: 22, fontWeight: 900, color: kpis.totalProfit !== null ? "#34d399" : "var(--text-muted)", marginTop: 4 }}>{fmtCurrency(kpis.totalProfit)}</div>
+              <div className="font-heading font-mono" style={{ fontSize: 22, fontWeight: 900, color: kpis?.totalProfit !== null && kpis?.totalProfit !== undefined ? "#34d399" : "var(--text-muted)", marginTop: 4 }}>{fmtCurrency(kpis?.totalProfit)}</div>
             </div>
             <div style={{ background: "rgba(18, 22, 34, 0.8)", padding: 16, borderRadius: 12, border: "1px solid var(--border)" }}>
               <div style={{ fontSize: 11, color: "var(--text-secondary)", textTransform: "uppercase", letterSpacing: "0.5px" }}>Average Order Value</div>
-              <div className="font-heading font-mono" style={{ fontSize: 22, fontWeight: 900, color: "#fbbf24", marginTop: 4 }}>{fmtCurrency(kpis.avgOrderValue)}</div>
+              <div className="font-heading font-mono" style={{ fontSize: 22, fontWeight: 900, color: "#fbbf24", marginTop: 4 }}>{fmtCurrency(kpis?.avgOrderValue)}</div>
             </div>
           </div>
         </div>
@@ -150,8 +164,8 @@ export default function BusinessReportModal({
             <AlertOctagon size={16} color="#f87171" />
             <span>3. Statistical Outlier & Anomaly Audit</span>
           </h2>
-          {anomalies.length > 0 ? (
-            anomalies.map((a, i) => (
+          {safeAnomalies.length > 0 ? (
+            safeAnomalies.map((a, i) => (
               <div key={i} style={{ background: "rgba(239, 68, 68, 0.08)", border: "1px solid rgba(239, 68, 68, 0.25)", borderRadius: 10, padding: 14, marginBottom: 10, fontSize: 13 }}>
                 <strong style={{ color: "#f87171" }}>🚨 {a.title} ({a.regionOrCategory}):</strong> {a.metricValue}. {a.contributingFactor}
               </div>
@@ -168,7 +182,7 @@ export default function BusinessReportModal({
             <span>4. AI Strategic Recommendations</span>
           </h2>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
-            {insights.map((ins, i) => (
+            {safeInsights.map((ins, i) => (
               <div key={i} style={{ background: "rgba(18, 22, 34, 0.8)", padding: 16, borderRadius: 12, border: "1px solid var(--border)", fontSize: 12 }}>
                 <strong style={{ color: "#60a5fa", display: "block", marginBottom: 4 }}>💡 {ins.metric}</strong>
                 <p style={{ color: "var(--text-primary)", marginBottom: 8, lineHeight: 1.4 }}>{ins.explanation}</p>
@@ -186,3 +200,4 @@ export default function BusinessReportModal({
     </div>
   );
 }
+
