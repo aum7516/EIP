@@ -12,7 +12,20 @@ CREATE TABLE IF NOT EXISTS users (
   created_at   TIMESTAMPTZ DEFAULT NOW()
 );
 
--- 2. Products
+-- 2. Sessions
+CREATE TABLE IF NOT EXISTS sessions (
+  id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id    UUID REFERENCES users(id) NOT NULL,
+  token_jti  TEXT UNIQUE NOT NULL,
+  expires_at TIMESTAMPTZ NOT NULL,
+  revoked    BOOLEAN DEFAULT FALSE,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_sessions_user_id ON sessions(user_id);
+CREATE INDEX IF NOT EXISTS idx_sessions_token_jti ON sessions(token_jti);
+
+-- 3. Products
 CREATE TABLE IF NOT EXISTS products (
   id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   name        TEXT NOT NULL,
@@ -23,7 +36,7 @@ CREATE TABLE IF NOT EXISTS products (
   created_at  TIMESTAMPTZ DEFAULT NOW()
 );
 
--- 3. Transactions
+-- 4. Transactions
 CREATE TABLE IF NOT EXISTS transactions (
   id               UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   product_id       UUID REFERENCES products(id),
@@ -34,7 +47,7 @@ CREATE TABLE IF NOT EXISTS transactions (
   transaction_date DATE NOT NULL
 );
 
--- 4. Backtest OHLCV data
+-- 5. Backtest OHLCV data
 CREATE TABLE IF NOT EXISTS backtest_data (
   id        UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   ticker    TEXT NOT NULL,
@@ -49,7 +62,7 @@ CREATE TABLE IF NOT EXISTS backtest_data (
 );
 CREATE INDEX IF NOT EXISTS idx_backtest_ticker_date ON backtest_data(ticker, date);
 
--- 5. Strategies
+-- 6. Strategies
 CREATE TABLE IF NOT EXISTS strategies (
   id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   name       TEXT NOT NULL,
@@ -58,7 +71,7 @@ CREATE TABLE IF NOT EXISTS strategies (
   created_by UUID REFERENCES users(id)
 );
 
--- 6. Backtest runs
+-- 7. Backtest runs
 CREATE TABLE IF NOT EXISTS backtest_runs (
   id                UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   strategy_id       UUID REFERENCES strategies(id),
@@ -71,7 +84,7 @@ CREATE TABLE IF NOT EXISTS backtest_runs (
   created_at        TIMESTAMPTZ DEFAULT NOW()
 );
 
--- 7. Backtest metrics
+-- 8. Backtest metrics
 CREATE TABLE IF NOT EXISTS backtest_metrics (
   id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   run_id       UUID REFERENCES backtest_runs(id),
@@ -82,14 +95,14 @@ CREATE TABLE IF NOT EXISTS backtest_metrics (
   equity_curve JSONB
 );
 
--- 8. Assistant conversations
+-- 9. Assistant conversations
 CREATE TABLE IF NOT EXISTS assistant_conversations (
   id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id    UUID REFERENCES users(id),
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- 9. Assistant messages
+-- 10. Assistant messages
 CREATE TABLE IF NOT EXISTS assistant_messages (
   id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   conversation_id UUID REFERENCES assistant_conversations(id),

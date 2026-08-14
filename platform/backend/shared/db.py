@@ -6,14 +6,23 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-DATABASE_URL = os.getenv("DATABASE_URL", "postgresql+psycopg://localhost/eip_db")
+BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+DB_MODE = os.getenv("DB_MODE", "local").lower()
 
-# Ensure psycopg3 dialect prefix
-if DATABASE_URL.startswith("postgresql://") or DATABASE_URL.startswith("postgres://"):
-    DATABASE_URL = DATABASE_URL.replace("postgresql://", "postgresql+psycopg://", 1)
-    DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql+psycopg://", 1)
 
-engine = create_engine(DATABASE_URL)
+def get_database_url() -> str:
+    if DB_MODE == "remote":
+        url = os.getenv("DATABASE_URL", "postgresql+psycopg://localhost/eip_db")
+        if url.startswith("postgresql://") or url.startswith("postgres://"):
+            url = url.replace("postgresql://", "postgresql+psycopg://", 1)
+            url = url.replace("postgres://", "postgresql+psycopg://", 1)
+        return url
+    return os.getenv("LOCAL_DATABASE_URL", f"sqlite:///{os.path.join(BASE_DIR, 'orbit.db')}")
+
+DATABASE_URL = get_database_url()
+connect_args = {"check_same_thread": False} if DATABASE_URL.startswith("sqlite") else {}
+
+engine = create_engine(DATABASE_URL, connect_args=connect_args)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 

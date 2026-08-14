@@ -13,6 +13,7 @@ duckdb
 chromadb
 yfinance
 pandas
+pyarrow
 numpy
 anthropic
 httpx

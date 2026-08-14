@@ -1,0 +1,13 @@
+{
+  "python.defaultInterpreterPath": "${workspaceFolder}/platform/backend/venv/Scripts/python.exe",
+  "python.pythonPath": "${workspaceFolder}/platform/backend/venv/Scripts/python.exe",
+  "python.analysis.venvPath": "${workspaceFolder}/platform/backend",
+  "python.analysis.venv": "venv",
+  "python.analysis.extraPaths": [
+    "${workspaceFolder}/platform/backend"
+  ],
+  "python.autoComplete.extraPaths": [
+    "${workspaceFolder}/platform/backend"
+  ],
+  "python.terminal.activateEnvironment": true
+}

@@ -8,7 +8,7 @@ function getToken(): string | null {
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   const token = getToken();
   const headers: HeadersInit = {
-    "Content-Type": "application/json",
+    ...(options.body instanceof FormData ? {} : { "Content-Type": "application/json" }),
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
     ...(options.headers || {}),
   };
@@ -35,9 +35,19 @@ export const api = {
   // Backtesting
   getStrategies: () => request<any[]>("/backtest/strategies"),
   getTickers: () => request<{ preloaded: string[] }>("/backtest/tickers"),
+  getTickerInfo: (ticker: string) => request<{ ticker: string; start_date: string; end_date: string; row_count: number; is_preloaded: boolean }>(`/backtest/ticker-info/${encodeURIComponent(ticker)}`),
+  uploadBacktestCSV: (file: File, customTicker?: string) => {
+    const formData = new FormData();
+    formData.append("file", file);
+    if (customTicker) formData.append("custom_ticker", customTicker);
+    return request<{ ticker: string; row_count: number; start_date: string; end_date: string; message: string }>(
+      "/backtest/upload", { method: "POST", body: formData }
+    );
+  },
   runBacktest: (body: any) => request<{ run_id: string; status: string }>("/backtest/run", { method: "POST", body: JSON.stringify(body) }),
   getBacktestResults: (runId: string) => request<any>(`/backtest/results/${runId}`),
   getBacktestHistory: () => request<any[]>("/backtest/history"),
+  deleteBacktestRun: (runId: string) => request<any>(`/backtest/history/${runId}`, { method: "DELETE" }),
 
   // DataMart
   getKPIs: () => request<any>("/datamart/kpis"),
