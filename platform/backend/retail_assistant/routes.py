@@ -15,6 +15,191 @@ router = APIRouter()
 MEMORY_TURNS = 6  # last N messages kept in context
 
 
+# --- Smart General Response Engine -------------------------------------------
+# Covers 30+ common questions without needing a real LLM API key.
+_PLATFORM_QA = [
+    # Greetings
+    (["hello", "hi", "hey", "good morning", "good afternoon", "namaste", "sup"],
+     "Hello! 👋 I'm **Orbit**, EIP's AI assistant. I can help you:\n\n"
+     "🛍️ **Find products** — just describe what you're looking for\n"
+     "📈 **Backtesting** — explain strategies, date ranges, metrics\n"
+     "🗄️ **DataMart** — guide you through CSV ingestion and NL queries\n"
+     "📊 **Dashboard** — explain KPIs and charts\n\n"
+     "What would you like to explore today?"),
+
+    # Identity
+    (["who are you", "what are you", "your name", "about you", "orbit"],
+     "I'm **Orbit**, the AI assistant built into EIP (Enterprise Intelligence Platform). "
+     "I can help with product recommendations, platform navigation, and answering questions about EIP's features. "
+     "I'm powered by RAG-based product search and a keyword intent router.\n\n"
+     "EIP was built for hackathon demonstration — ask me anything!"),
+
+    # Backtesting — general
+    (["backtest", "backtesting", "backtest platform", "strategy simulation"],
+     "📈 **Backtesting Platform** is EIP's quantitative finance module. Here's how to use it:\n\n"
+     "1. **Go to Backtesting** from the sidebar\n"
+     "2. **Step 1 — Data**: Select a preloaded ticker (AAPL, MSFT, etc.) or upload your own OHLCV CSV\n"
+     "3. **Step 2 — Strategy**: Choose a preset strategy (SMA Crossover, RSI, Bollinger Bands, etc.) and tune parameters with sliders\n"
+     "4. **Step 3 — Run**: Set start/end dates, choose a train/test split date, then click **Launch Backtest Simulation**\n"
+     "5. **Results**: See CAGR, Sharpe Ratio, Max Drawdown, Win Rate, equity curve chart, and trade log\n\n"
+     "All runs are saved in history and the **Bias-Guard** system checks for look-ahead bias automatically."),
+
+    # Backtesting — metrics
+    (["cagr", "sharpe", "sharpe ratio", "max drawdown", "win rate", "profit factor", "backtest metric", "what does"],
+     "📊 **Backtesting Metrics Explained:**\n\n"
+     "- **CAGR** (Compound Annual Growth Rate): Annualized return of your strategy\n"
+     "- **Sharpe Ratio**: Risk-adjusted return (>1.0 is good, >2.0 is excellent)\n"
+     "- **Max Drawdown**: Largest peak-to-trough loss percentage (lower is better)\n"
+     "- **Win Rate**: % of trades that were profitable\n"
+     "- **Profit Factor**: Gross profit ÷ gross loss (>1.5 is solid)\n"
+     "- **Total Return**: Overall % gain or loss over the simulation period\n\n"
+     "In-Sample metrics are from the training period; Out-of-Sample metrics show generalization performance."),
+
+    # Backtesting — strategies
+    (["sma", "rsi", "bollinger", "mean reversion", "momentum", "strategy type", "which strategy", "trading strategy"],
+     "EIP includes these built-in strategy presets:\n\n"
+     "📈 **SMA Crossover** — Buy when short SMA crosses above long SMA, sell on cross-below. Trend-following.\n"
+     "📉 **RSI Reversal** — Buy oversold (RSI < 30), sell overbought (RSI > 70). Mean-reversion.\n"
+     "📊 **Bollinger Band** — Trade breakouts from ±2σ bands. Volatility-based.\n"
+     "⚡ **Momentum** — Buy assets with recent strong performance. Trend-continuation.\n\n"
+     "All parameters are tunable with sliders before running."),
+
+    # Backtesting — bias guard
+    (["bias", "look-ahead", "bias guard", "look ahead bias"],
+     "🛡️ **Bias-Guard** is EIP's anti-cheating system for backtests.\n\n"
+     "Look-ahead bias happens when a strategy accidentally uses future data to make past decisions — inflating performance artificially.\n\n"
+     "EIP's Bias-Guard checks that every signal is computed only from data available **before** the decision date. "
+     "If a run passes, you'll see a green **BIAS-GUARD VERIFIED** badge on the results page."),
+
+    # DataMart — general
+    (["datamart", "data mart", "data engine", "ingest", "ingest csv", "upload data"],
+     "🗄️ **DataMart Engine** is EIP's data warehouse and analytics workspace.\n\n"
+     "**How to use it:**\n"
+     "1. Go to **DataMart** from the sidebar\n"
+     "2. **Upload a CSV** — transactions, products, or any tabular data\n"
+     "3. The engine validates columns, detects types, and stores data in the database\n"
+     "4. Use **Natural Language Query** to ask questions like 'top 5 products by revenue'\n"
+     "5. Results appear as a table and can be exported\n\n"
+     "You can also use the **Filter Engine** for structured queries without SQL knowledge."),
+
+    # DataMart — NL queries
+    (["natural language", "nl query", "ask question", "query data", "ask data", "sql"],
+     "📝 **Natural Language Queries** in DataMart let you ask questions in plain English:\n\n"
+     "Try asking:\n"
+     "- *'What is the total revenue by region?'*\n"
+     "- *'Show top 5 products by sales volume'*\n"
+     "- *'Revenue trend for the last 6 months'*\n"
+     "- *'Which category has the highest profit margin?'*\n\n"
+     "The engine converts your question to SQL automatically and returns results as a table."),
+
+    # Dashboard
+    (["dashboard", "kpi", "revenue", "overview", "home page", "main page"],
+     "📊 **EIP Dashboard** shows a live overview of your business:\n\n"
+     "- **Total Revenue**: Sum of all transactions in your DataMart\n"
+     "- **Total Orders**: Order count\n"
+     "- **Top Category**: Best-performing product category by revenue\n"
+     "- **Backtest Runs**: Total simulations run\n"
+     "- **Revenue Trend Chart**: Monthly area chart\n"
+     "- **Revenue by Region**: Bar breakdown by geography\n"
+     "- **Recent Backtests**: Last 5 simulation runs with status\n\n"
+     "All data updates automatically when you ingest new CSV files in DataMart."),
+
+    # Login / Auth
+    (["login", "sign in", "sign up", "register", "password", "account", "logout", "credentials"],
+     "🔐 **Authentication in EIP:**\n\n"
+     "- Go to `/login` to sign in with your email and password\n"
+     "- New users: Click **Sign Up** on the login page and register with email + password\n"
+     "- All credentials are stored securely in Supabase PostgreSQL (passwords are hashed with pbkdf2_sha256)\n"
+     "- Sessions expire after 60 minutes — you'll be redirected to login automatically\n"
+     "- To log out, click **Sign Out Session** at the bottom of the sidebar"),
+
+    # Product search help
+    (["how to search", "find product", "search product", "how do i find", "product search"],
+     "🛍️ **How to search for products:**\n\n"
+     "**In this chat:**\n"
+     "- Just describe what you need: *'I need a laptop for video editing under ₹80,000'*\n"
+     "- Or be specific: *'wireless earbuds with noise cancellation'*\n"
+     "- I'll show you matching products with prices, specs, and stock info\n\n"
+     "**In the Catalog panel (right side):**\n"
+     "- Type in the search box to filter products live\n"
+     "- Use category buttons to browse by Electronics, Furniture, etc.\n"
+     "- All 30 products in our catalog are browsable"),
+
+    # Comparison
+    (["compare", "difference between", "vs", "versus", "which is better", "better than"],
+     "I can help compare products! Just tell me the two items you'd like to compare.\n\n"
+     "For example:\n"
+     "- *'Compare UltraBook Pro vs BudgetBook laptop'*\n"
+     "- *'Which is better: gaming chair or office chair?'*\n"
+     "- *'Difference between NoisePro headphones and CloudSync earbuds'*\n\n"
+     "I'll show you both products side by side with key specs and pricing."),
+
+    # Budget / price range
+    (["under", "budget", "within", "affordable", "cheap", "price range", "less than", "below"],
+     "Great! I can filter products by budget. Just tell me:\n"
+     "1. **What category** you're interested in (laptop, chair, earbuds, etc.)\n"
+     "2. **Your budget** (e.g., under ₹10,000 or within ₹50,000)\n\n"
+     "Example: *'Show me laptops under ₹40,000'* or *'Affordable office chairs'*"),
+
+    # Features / EIP overview
+    (["features", "what can eip do", "what does eip", "capabilities", "modules", "what is eip", "platform"],
+     "🚀 **EIP — Enterprise Intelligence Platform** has 4 core modules:\n\n"
+     "📈 **Backtesting Engine** — Simulate trading strategies on historical price data with bias protection\n"
+     "🗄️ **DataMart Engine** — Ingest CSV datasets, run NL queries, explore business KPIs\n"
+     "🤖 **Retail AI Assistant** — Product recommendations, semantic search (you're here!)\n"
+     "📊 **Unified Dashboard** — Real-time KPIs, revenue trends, regional breakdown\n\n"
+     "EIP was designed as a full-stack hackathon project using FastAPI + Next.js + Supabase + ChromaDB."),
+
+    # Help
+    (["help", "what can you do", "how can you help", "guide", "tutorial"],
+     "Here's everything I can help you with:\n\n"
+     "🛍️ **Products**: Ask for recommendations, search by category, compare items\n"
+     "📈 **Backtesting**: How to run simulations, what metrics mean, strategy explanations\n"
+     "🗄️ **DataMart**: How to upload data, run queries, use the filter engine\n"
+     "📊 **Dashboard**: What each KPI means, how to read charts\n"
+     "🔐 **Auth**: Login, signup, session management\n\n"
+     "Just type your question naturally — I'll do my best to help!"),
+
+    # Thank you
+    (["thank", "thanks", "thank you", "thx", "great", "awesome", "perfect", "helpful"],
+     "You're welcome! 😊 Happy to help.\n\nFeel free to ask me anything else — "
+     "products, platform questions, or anything else about EIP!"),
+]
+
+
+def smart_general_response(message: str, history: list) -> str:
+    """Pattern-match the user message against known Q&A pairs. Falls back to a helpful default."""
+    msg_lower = message.lower().strip()
+
+    # Check each pattern group
+    for keywords, response in _PLATFORM_QA:
+        if any(kw in msg_lower for kw in keywords):
+            return response
+
+    # Check if it's a very short or unclear message
+    if len(msg_lower.split()) <= 2:
+        return (
+            f"I'm not sure I understood *\"{message}\"* — could you give me a bit more context?\n\n"
+            "I can help with:\n"
+            "- 🛍️ Product recommendations (e.g., 'recommend a laptop under ₹60,000')\n"
+            "- 📈 Backtesting (e.g., 'how do I run a backtest?')\n"
+            "- 🗄️ DataMart (e.g., 'how do I upload data?')\n"
+            "- 📊 Dashboard (e.g., 'what does CAGR mean?')"
+        )
+
+    # Generic fallback — contextual and helpful, not a greeting
+    return (
+        f"That's a great question! Here's what I know that might be relevant:\n\n"
+        "EIP has four main modules: **Backtesting**, **DataMart Engine**, **AI Assistant**, and the **Dashboard**. "
+        "Each module is accessible from the sidebar.\n\n"
+        "Could you be more specific about what you'd like help with? For example:\n"
+        "- *Product or shopping related* → describe what you're looking for\n"
+        "- *Platform feature* → mention the module name (backtest, datamart, dashboard)\n"
+        "- *Data or analytics* → use the DataMart Engine workspace\n\n"
+        "I'm here to help! 🚀"
+    )
+
+
 # --- Schemas -----------------------------------------------------------------
 class ChatRequest(BaseModel):
     conversation_id: Optional[str] = None
@@ -126,23 +311,9 @@ def chat(req: ChatRequest, db: Session = Depends(get_db),
         }
 
     else:  # general_support
-        platform_context = """You are Orbit, the intelligent assistant for EIP (Enterprise Intelligence Platform).
-EIP includes:
-- 📈 Backtesting Platform: Run historical strategy simulations with bias-guard protection
-- 🗄️ DataMart Engine: Ingest CSV datasets, run natural language SQL queries
-- 🤖 Retail AI Assistant: Product search, recommendations (this workspace)
-- 📊 Unified Dashboard: Live KPIs, revenue trends, regional breakdown
-Help users navigate, understand features, and get the most from EIP. Be concise and professional."""
-        llm_resp = chat_with_llm(
-            messages=messages,
-            system_prompt=platform_context,
-            tools_enabled=False
-        )
-        content = llm_resp.get("content", MOCK_RESPONSES["general"])
-        response_data = {
-            "answer_text": content if isinstance(content, str) else MOCK_RESPONSES["general"],
-            "chart_data": [], "products": []
-        }
+        # Use smart keyword-based responder (works without a real LLM API key)
+        answer_text = smart_general_response(req.message, messages)
+        response_data = {"answer_text": answer_text, "chart_data": [], "products": []}
 
     # Log assistant message
     assistant_msg = AssistantMessage(
