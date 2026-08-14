@@ -95,13 +95,28 @@ def get_current_user(
     except JWTError:
         raise HTTPException(status_code=401, detail="Invalid or expired token")
     
-    user = db.query(User).filter(User.id == uuid.UUID(user_id)).first()
-    if not user:
-        raise HTTPException(status_code=401, detail="User not found")
-    session = db.query(AuthSession).filter(AuthSession.token_jti == token_jti).first()
-    if not session or session.revoked or session.expires_at < datetime.utcnow():
-        raise HTTPException(status_code=401, detail="Session expired or revoked")
-    return user
+    try:
+        user_uuid = uuid.UUID(str(user_id))
+        user = db.query(User).filter(User.id == user_uuid).first()
+        if not user:
+            raise HTTPException(status_code=401, detail="User not found")
+        
+        session = db.query(AuthSession).filter(AuthSession.token_jti == str(token_jti)).first()
+        if not session or session.revoked:
+            raise HTTPException(status_code=401, detail="Session expired or revoked")
+        
+        if session.expires_at:
+            exp = session.expires_at.replace(tzinfo=None) if session.expires_at.tzinfo else session.expires_at
+            if exp < datetime.utcnow():
+                raise HTTPException(status_code=401, detail="Session expired or revoked")
+
+        return user
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Error in get_current_user: {e}")
+        raise HTTPException(status_code=401, detail=f"Authentication failed: {str(e)}")
+
 
 
 # --- Routes -------------------------------------------------------------------
