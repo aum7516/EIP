@@ -145,13 +145,15 @@ def _load_ohlcv(ticker: str, start_date: Optional[str] = None, end_date: Optiona
 
             if not df_yf.empty:
                 processed_yf = _process_ohlcv_dataframe(df_yf)
-                if csv_df is not None and not csv_df.empty:
-                    combined = pd.concat([csv_df, processed_yf])
-                    combined = combined[~combined.index.duplicated(keep="last")].sort_index()
-                    return combined
-                return processed_yf
+                if not processed_yf.empty:
+                    if csv_df is not None and not csv_df.empty:
+                        combined = pd.concat([csv_df, processed_yf])
+                        combined = combined[~combined.index.duplicated(keep="last")].sort_index()
+                        return combined
+                    return processed_yf
         except Exception as e:
             print(f"Warning downloading yfinance for {t}: {e}")
+
 
     if csv_df is not None:
         return csv_df
