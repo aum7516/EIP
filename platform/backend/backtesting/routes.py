@@ -109,8 +109,9 @@ def _process_ohlcv_dataframe(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def _load_ohlcv(ticker: str, start_date: Optional[str] = None, end_date: Optional[str] = None) -> pd.DataFrame:
-    """Load OHLCV: load local CSV if available and covers requested range; otherwise download via yfinance."""
-    sanitized_ticker = ticker.replace(".", "_")
+    """Load OHLCV: load local CSV if available; otherwise download via yfinance with fallback suffixes like .NS."""
+    clean_ticker = ticker.strip().upper()
+    sanitized_ticker = clean_ticker.replace(".", "_")
     csv_path = os.path.join(DATA_DIR, f"{sanitized_ticker}_historical.csv")
     csv_df = None
 
@@ -118,7 +119,6 @@ def _load_ohlcv(ticker: str, start_date: Optional[str] = None, end_date: Optiona
         try:
             raw_csv = pd.read_csv(csv_path)
             csv_df = _process_ohlcv_dataframe(raw_csv)
-            # Check if requested date range is covered by local CSV
             if start_date and end_date:
                 s_dt = pd.to_datetime(start_date)
                 e_dt = pd.to_datetime(end_date)
@@ -130,30 +130,34 @@ def _load_ohlcv(ticker: str, start_date: Optional[str] = None, end_date: Optiona
         except Exception as e:
             print(f"Warning loading CSV for {ticker}: {e}")
 
+    # Fallback candidates: try ticker as typed first, then add .NS or .BO for Indian stocks
+    candidate_tickers = [clean_ticker]
+    if not clean_ticker.endswith(".NS") and not clean_ticker.endswith(".BO"):
+        candidate_tickers.append(f"{clean_ticker}.NS")
+        candidate_tickers.append(f"{clean_ticker}.BO")
 
-    # Fallback to yfinance if CSV missing or doesn't cover requested date range
-    try:
-        if start_date and end_date:
-            df_yf = yf.download(ticker, start=start_date, end=end_date, progress=False)
-        else:
-            df_yf = yf.download(ticker, period="5y", progress=False)
+    for t in candidate_tickers:
+        try:
+            if start_date and end_date:
+                df_yf = yf.download(t, start=start_date, end=end_date, progress=False)
+            else:
+                df_yf = yf.download(t, period="5y", progress=False)
 
-        if not df_yf.empty:
-            processed_yf = _process_ohlcv_dataframe(df_yf)
-            # Combine with local CSV if available to preserve past history + new data
-            if csv_df is not None and not csv_df.empty:
-                combined = pd.concat([csv_df, processed_yf])
-                combined = combined[~combined.index.duplicated(keep="last")].sort_index()
-                return combined
-            return processed_yf
-    except Exception as e:
-        print(f"Warning downloading yfinance for {ticker}: {e}")
+            if not df_yf.empty:
+                processed_yf = _process_ohlcv_dataframe(df_yf)
+                if csv_df is not None and not csv_df.empty:
+                    combined = pd.concat([csv_df, processed_yf])
+                    combined = combined[~combined.index.duplicated(keep="last")].sort_index()
+                    return combined
+                return processed_yf
+        except Exception as e:
+            print(f"Warning downloading yfinance for {t}: {e}")
 
-    # If yfinance failed or yielded empty, return local CSV if present
     if csv_df is not None:
         return csv_df
 
-    raise HTTPException(status_code=404, detail=f"No market data found for ticker: {ticker}")
+    raise HTTPException(status_code=404, detail=f"No market data found for ticker: {ticker}. For Indian stocks (e.g. MRF, Reliance), try entering with '.NS' suffix (e.g. {clean_ticker}.NS).")
+
 
 
 def _parse_date(value: str | None) -> date | None:
