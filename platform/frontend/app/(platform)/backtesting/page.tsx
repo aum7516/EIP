@@ -292,7 +292,6 @@ export default function BacktestingPage() {
               Continue to Strategy Definition
             </button>
           </div>
-          </div>
 
           <div className="card" style={{ padding: 24 }}>
             <h3 style={{ fontSize: 18, fontWeight: 700, marginBottom: 16 }}>Upload Custom OHLCV CSV</h3>
