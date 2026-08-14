@@ -3,6 +3,7 @@ import Sidebar from "@/components/shared/Sidebar";
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { isAuthenticated } from "@/lib/auth";
+import { DataProvider } from "@/context/DataContext";
 
 export default function PlatformLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
@@ -11,9 +12,12 @@ export default function PlatformLayout({ children }: { children: React.ReactNode
   }, [router]);
 
   return (
-    <div style={{ display: "flex" }}>
-      <Sidebar />
-      <main className="main-content">{children}</main>
-    </div>
+    <DataProvider>
+      <div style={{ display: "flex" }}>
+        <Sidebar />
+        <main className="main-content">{children}</main>
+      </div>
+    </DataProvider>
   );
 }
+

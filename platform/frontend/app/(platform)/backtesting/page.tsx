@@ -291,6 +291,7 @@ export default function BacktestingPage() {
             >
               Continue to Strategy Definition
             </button>
+          </div>>
           </div>
 
           <div className="card" style={{ padding: 24 }}>

@@ -5,6 +5,7 @@ import os
 
 load_dotenv()
 
+import shared.models  # Ensure models are registered
 from auth.routes import get_current_user, router as auth_router
 from backtesting.routes import router as backtest_router
 from datamart.routes import router as datamart_router
@@ -17,7 +18,7 @@ app = FastAPI(
     version="1.0.0",
 )
 
-origins = os.getenv("CORS_ORIGINS", "http://localhost:3000").split(",")
+origins = os.getenv("CORS_ORIGINS", "http://localhost:3000,http://localhost:3001,http://localhost:3002,http://127.0.0.1:3000,http://127.0.0.1:3001,http://127.0.0.1:3002").split(",")
 
 app.add_middleware(
     CORSMiddleware,
@@ -41,3 +42,4 @@ app.include_router(assistant_router, prefix="/assistant", tags=["Retail Assistan
 @app.get("/")
 def health_check():
     return {"status": "ok", "platform": "Orbit - EIP", "version": "1.0.0"}
+

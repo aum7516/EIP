@@ -4,6 +4,9 @@ from sqlalchemy.sql import func
 from shared.db import Base
 from shared.types import GUID, json_type
 
+UUID_TYPE = GUID
+JSON_TYPE = json_type
+
 
 class User(Base):
     __tablename__ = "users"
@@ -108,3 +111,5 @@ class AssistantMessage(Base):
     intent_type = Column(String)               # product_query, business_data_query, general_support
     feedback = Column(String, nullable=True)   # up, down, or null
     created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+

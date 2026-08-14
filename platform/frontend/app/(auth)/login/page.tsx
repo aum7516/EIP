@@ -49,7 +49,7 @@ export default function LoginPage() {
             </div>
             <div>
               <label style={{ fontSize: 13, color: "var(--text-secondary)", marginBottom: 6, display: "block" }}>Password</label>
-              <input id="login-password" type="password" className="input-field" placeholder="••••••••"
+              <input id="login-password" type="password" className="input-field" placeholder="ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½"
                 value={password} onChange={e => setPassword(e.target.value)} required />
             </div>
             {error && <div style={{ color: "var(--accent-red)", fontSize: 13, background: "rgba(239,68,68,0.1)", padding: "10px 14px", borderRadius: 8, border: "1px solid rgba(239,68,68,0.2)" }}>{error}</div>}
@@ -63,7 +63,7 @@ export default function LoginPage() {
           </p>
         </div>
 
-        <p style={{ textAlign: "center", marginTop: 24, fontSize: 11, color: "var(--text-muted)" }}>HACKORBIT · PS-05 · GDG</p>
+        <p style={{ textAlign: "center", marginTop: 24, fontSize: 11, color: "var(--text-muted)" }}>HACKORBIT ï¿½ PS-05 ï¿½ GDG</p>
       </div>
     </div>
   );

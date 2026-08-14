@@ -1,0 +1,10 @@
+{
+  "name": "orbit-eip-root",
+  "version": "1.0.0",
+  "description": "Orbit - EIP Root Scripts",
+  "scripts": {
+    "frontend": "cd platform/frontend && npm run dev",
+    "backend": "cd platform/backend && .\\venv\\Scripts\\uvicorn main:app --reload --port 8000",
+    "server": "cd platform/backend && .\\venv\\Scripts\\uvicorn main:app --reload --port 8000"
+  }
+}

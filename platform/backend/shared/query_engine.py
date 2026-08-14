@@ -16,11 +16,12 @@ from shared.llm_client import chat_with_llm
 ALLOWED_TABLES = {"transactions", "products", "backtest_metrics", "backtest_runs"}
 
 ALLOWED_COLUMNS = {
-    "transactions":    {"id", "product_id", "user_id", "quantity", "total_amount", "region", "transaction_date"},
+    "transactions":    {"id", "transaction_id", "product_id", "product", "user_id", "customer_type", "salesperson", "quantity", "total_amount", "revenue", "cost", "profit", "unit_price", "discount", "payment_method", "region", "category", "transaction_date", "date"},
     "products":        {"id", "name", "category", "price", "stock_qty", "description"},
     "backtest_metrics": {"id", "run_id", "cagr", "sharpe_ratio", "max_drawdown", "win_rate"},
     "backtest_runs":   {"id", "strategy_id", "ticker", "start_date", "end_date", "status", "bias_check_passed"},
 }
+
 
 ALLOWED_METRICS = {"sum_revenue", "count_orders", "avg_order", "sum_quantity", "count_products"}
 
@@ -43,35 +44,60 @@ def _validate_query_params(table: str, metric: str, filters: dict, group_by: Opt
 def _build_duckdb_query(table: str, metric: str, filters: dict, group_by: Optional[str]) -> str:
     """Build a safe parameterized DuckDB SQL query from validated inputs."""
     parquet_file = os.path.join(PARQUET_DIR, f"{table}.parquet")
-    
+    csv_file = os.path.join(PARQUET_DIR, f"{table}.csv")
+
+    if os.path.exists(parquet_file):
+        data_source = f"read_parquet('{parquet_file}')"
+    elif os.path.exists(csv_file):
+        data_source = f"read_csv_auto('{csv_file}')"
+    else:
+        data_source = f"read_parquet('{parquet_file}')"
+
+    conn = duckdb.connect()
+    try:
+        cols = [c[0] for c in conn.execute(f"DESCRIBE SELECT * FROM {data_source}").fetchall()]
+    except Exception:
+        cols = []
+    finally:
+        conn.close()
+
+    rev_col = "revenue" if "revenue" in cols else ("total_amount" if "total_amount" in cols else "revenue")
+    date_col = "date" if "date" in cols else ("transaction_date" if "transaction_date" in cols else "date")
+    qty_col = "quantity" if "quantity" in cols else "1"
+
     metric_sql = {
-        "sum_revenue":    "SUM(total_amount) as value",
+        "sum_revenue":    f"ROUND(SUM({rev_col}), 2) as value",
         "count_orders":   "COUNT(*) as value",
-        "avg_order":      "AVG(total_amount) as value",
-        "sum_quantity":   "SUM(quantity) as value",
-        "count_products": "COUNT(DISTINCT product_id) as value",
-    }[metric]
+        "avg_order":      f"ROUND(AVG({rev_col}), 2) as value",
+        "sum_quantity":   f"SUM({qty_col}) as value",
+        "count_products": "COUNT(DISTINCT product) as value" if "product" in cols else "COUNT(*) as value",
+    }.get(metric, f"ROUND(SUM({rev_col}), 2) as value")
 
     where_clauses = []
     if filters.get("date_from"):
-        where_clauses.append(f"transaction_date >= '{filters['date_from']}'")
+        where_clauses.append(f"{date_col} >= '{filters['date_from']}'")
     if filters.get("date_to"):
-        where_clauses.append(f"transaction_date <= '{filters['date_to']}'")
-    if filters.get("region"):
+        where_clauses.append(f"{date_col} <= '{filters['date_to']}'")
+    if filters.get("region") and "region" in cols:
         where_clauses.append(f"region = '{filters['region']}'")
+    if filters.get("category") and "category" in cols:
+        where_clauses.append(f"category = '{filters['category']}'")
 
     where_sql = f"WHERE {' AND '.join(where_clauses)}" if where_clauses else ""
-    group_sql = f"GROUP BY {group_by}, " if group_by else ""
-    select_group = f"{group_by}," if group_by else ""
+    actual_group = group_by if (group_by and group_by in cols) else (date_col if group_by else None)
+    
+    group_sql = f"GROUP BY {actual_group}" if actual_group else ""
+    select_group = f"{actual_group} as label," if actual_group else ""
 
     return f"""
         SELECT {select_group} {metric_sql}
-        FROM read_parquet('{parquet_file}')
+        FROM {data_source}
         {where_sql}
-        {group_sql if group_by else ''}
+        {group_sql}
         ORDER BY value DESC
         LIMIT 50
     """.strip()
+
 
 
 def ask_business_data(question: str, user_id: str = "") -> dict:

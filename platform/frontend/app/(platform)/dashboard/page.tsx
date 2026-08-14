@@ -29,7 +29,7 @@ export default function DashboardPage() {
               Welcome back{auth?.email ? `, ${auth.email.split("@")[0]}` : ""} ??
             </h1>
             <p style={{ color: "var(--text-secondary)", marginTop: 4, fontSize: 14 }}>
-              EIP Unified Dashboard · All modules in one view
+              EIP Unified Dashboard ï¿½ All modules in one view
             </p>
           </div>
           <div style={{ textAlign: "right" }}>
@@ -41,10 +41,10 @@ export default function DashboardPage() {
       {/* KPI Cards */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 16, marginBottom: 32 }}>
         {[
-          { label: "Total Revenue", value: loading ? "—" : kpis?.total_revenue ? formatCurrency(kpis.total_revenue) : "—", change: "+12.4%", up: true, icon: "??" },
-          { label: "Total Orders", value: loading ? "—" : kpis?.order_count?.toLocaleString() ?? "—", change: "+8.1%", up: true, icon: "??" },
-          { label: "Top Category", value: loading ? "—" : kpis?.top_category?.name ?? "—", change: kpis?.top_category?.revenue ? formatCurrency(kpis.top_category.revenue) : "", up: true, icon: "??" },
-          { label: "Backtest Runs", value: loading ? "—" : history.length.toString(), change: `${history.filter(r => r.bias_check_passed).length} bias-clean`, up: true, icon: "??" },
+          { label: "Total Revenue", value: loading ? "ï¿½" : kpis?.total_revenue ? formatCurrency(kpis.total_revenue) : "ï¿½", change: "+12.4%", up: true, icon: "??" },
+          { label: "Total Orders", value: loading ? "ï¿½" : kpis?.order_count?.toLocaleString() ?? "ï¿½", change: "+8.1%", up: true, icon: "??" },
+          { label: "Top Category", value: loading ? "ï¿½" : kpis?.top_category?.name ?? "ï¿½", change: kpis?.top_category?.revenue ? formatCurrency(kpis.top_category.revenue) : "", up: true, icon: "??" },
+          { label: "Backtest Runs", value: loading ? "ï¿½" : history.length.toString(), change: `${history.filter(r => r.bias_check_passed).length} bias-clean`, up: true, icon: "??" },
         ].map((kpi, i) => (
           <div key={i} className="kpi-card fade-in" style={{ animationDelay: `${i * 0.08}s` }}>
             <div style={{ fontSize: 24, marginBottom: 8 }}>{kpi.icon}</div>
@@ -77,7 +77,7 @@ export default function DashboardPage() {
             </ResponsiveContainer>
           ) : (
             <div style={{ height: 220, display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text-muted)", fontSize: 14 }}>
-              {loading ? <div className="spinner" /> : "No data yet — run a DataMart ingest"}
+              {loading ? <div className="spinner" /> : "No data yet ï¿½ run a DataMart ingest"}
             </div>
           )}
         </div>
@@ -119,16 +119,16 @@ export default function DashboardPage() {
                   <td style={{ padding: "12px 12px", fontWeight: 600 }}>{r.ticker}</td>
                   <td style={{ padding: "12px 12px" }}><span className={`badge ${r.status === "completed" ? "badge-green" : r.status === "running" ? "badge-blue" : "badge-red"}`}>{r.status}</span></td>
                   <td style={{ padding: "12px 12px" }}>{r.bias_check_passed ? <span className="badge badge-green">? Clean</span> : <span className="badge badge-red">? Failed</span>}</td>
-                  <td style={{ padding: "12px 12px", color: r.cagr > 0 ? "var(--accent-green)" : "var(--accent-red)" }}>{r.cagr != null ? `${r.cagr.toFixed(2)}%` : "—"}</td>
-                  <td style={{ padding: "12px 12px" }}>{r.sharpe_ratio != null ? r.sharpe_ratio.toFixed(2) : "—"}</td>
-                  <td style={{ padding: "12px 12px", color: "var(--text-muted)" }}>{r.created_at?.slice(0, 10) ?? "—"}</td>
+                  <td style={{ padding: "12px 12px", color: r.cagr > 0 ? "var(--accent-green)" : "var(--accent-red)" }}>{r.cagr != null ? `${r.cagr.toFixed(2)}%` : "ï¿½"}</td>
+                  <td style={{ padding: "12px 12px" }}>{r.sharpe_ratio != null ? r.sharpe_ratio.toFixed(2) : "ï¿½"}</td>
+                  <td style={{ padding: "12px 12px", color: "var(--text-muted)" }}>{r.created_at?.slice(0, 10) ?? "ï¿½"}</td>
                 </tr>
               ))}
             </tbody>
           </table>
         ) : (
           <div style={{ textAlign: "center", color: "var(--text-muted)", padding: "32px 0", fontSize: 14 }}>
-            No backtest runs yet · <a href="/backtesting" style={{ color: "var(--accent-blue)" }}>Run your first strategy ?</a>
+            No backtest runs yet ï¿½ <a href="/backtesting" style={{ color: "var(--accent-blue)" }}>Run your first strategy ?</a>
           </div>
         )}
       </div>
